@@ -1,0 +1,6 @@
+digraph tabla {
+    node [shape=plaintext]
+    tabla [label=<<table border="1" cellspacing="0">
+        <tr><td bgcolor="#c1e1c1"><b> Estado </b></td><td bgcolor="#c1e1c1"><b> Sym </b></td><td bgcolor="#c1e1c1"><b> Sigpos </b></td><td bgcolor="#c1e1c1"><b> Estado </b></td></tr>
+
+<tr><td>S0</td><td>{nuevo}</td><td>3,4,</td><td>S1</td></tr><tr><td>S0</td><td>2</td><td>3,4,</td><td>S1</td></tr><tr><td>S1</td><td>2</td><td>3,4,</td><td>S1</td></tr><tr><td>S1</td><td>{nuevo}</td><td>3,4,</td><td>S1</td></tr></table>>];}

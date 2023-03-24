@@ -1,0 +1,57 @@
+digraph G{
+rankdir=UD
+node[shape=ellipse]
+concentrate=true
+nodo8 [ label =".
+
+first: 1,2,
+last: 4
+an: false"]; 
+nodo6 [ label =".
+
+first: 1,2,
+last: 1,2,3,
+an: false"]; 
+nodo3 [ label ="|
+
+first: 1,2,
+last: 1,2,
+an: false"]; 
+nodo1 [ label ="{nuevo}
+
+first: 1,
+last: 1,
+an: false
+hoja: 1"]; 
+nodo3->nodo1
+nodo2 [ label ="2
+
+first: 2,
+last: 2,
+an: false
+hoja: 2"]; 
+nodo3->nodo2
+nodo6->nodo3
+nodo5 [ label ="*
+
+first: 3,
+last: 3,
+an: true"]; 
+nodo4 [ label ="{nuevo}
+
+first: 3,
+last: 3,
+an: false
+hoja: 3"]; 
+nodo5->nodo4
+nodo6->nodo5
+nodo8->nodo6
+nodo7 [ label ="#
+
+first: 4,
+last: 4,
+an: false
+hoja: 4"]; 
+nodo8->nodo7
+
+}

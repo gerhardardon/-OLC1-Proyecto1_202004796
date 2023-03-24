@@ -1,0 +1,516 @@
+package analizadores;
+import java_cup.runtime.*;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java_cup.runtime.XMLElement;
+import proyect1.menu;
+
+parser code 
+{:  
+    
+    
+    /**
+     * Método al que se llama automáticamente ante algún error sintactico.
+     *
+     */
+    public void syntax_error(Symbol s) {
+        System.out.println("Error Sintáctico en la Línea " + (s.left)
+                + " Columna " + s.right + ". No se esperaba este componente: " + s.value + ".");
+                listaErrores error = new listaErrores(s.value.toString(),s.right,s.left,"sintactico");
+                menu.err.add(error);
+    }
+
+    /**
+     * Método al que se llama automáticamente ante algún error sintáctico en el
+     * que ya no es posible una recuperación de errores.
+     *
+     */
+    public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
+        System.out.println("Error síntactico irrecuperable en la Línea "
+                + (s.left) + " Columna " + s.right + ". Componente " + s.value
+                + " no reconocido.");
+        listaErrores error = new listaErrores(s.value.toString(),s.right,s.left,"sintactico");
+        menu.err.add(error);
+    }
+
+    //ARRAYS UTILES PARA TRANSICIONES-------------------------------------------
+    public static ArrayList<String> arrayId = new ArrayList<String>(); //sym
+    public static ArrayList<String> sigposEvaluar = new ArrayList<String>(); //sigpos a evaluar
+    public static HashMap<String, String> hashEstados = new HashMap<String, String>();// sigpos -> S
+    public static HashMap<String, String> hashAux = new HashMap<String, String>();// numHoja -> sigpos
+    public static int numEstado = 0;
+    public static ListaSimple ls =new ListaSimple();
+
+    /* DICCIONARIO
+        arrayId.get(Integer.parseInt(primero)-1) obtener sym desde un numHoja de hash
+        
+     */
+    public static void transiciones(String sigpos, int estadoEval,String nombre) { //PARAMETRO QUE INGRESA LAS SIGPOS.
+        String firsts = sigpos;
+        String[] primeros = firsts.split(","); //obtenemos los primeros del arbol
+        for (String x : primeros) {//llenamos aux ---------------------------------------------
+            hashAux.put(x, tablaSiguientes.get(x));
+        }
+
+        for (String i : hashAux.keySet()) { //buscar duplicados
+            for (String j : hashAux.keySet()) { //buscar duplicados
+                if (i == j) {
+
+                } else {
+                    String sym1 = arrayId.get(Integer.parseInt(i) - 1);
+                    String sym2 = arrayId.get(Integer.parseInt(j) - 1);
+                    //System.out.println("sym1:" + sym1 + " sym2:" + sym2);
+
+                    if (sym1.equals(sym2)) {//duplicados en la letra
+                        //System.out.println("=========DUPLICADO" + sym1);
+                        String concatenacion = hashAux.get(i).concat(hashAux.get(j));
+
+// Separamos la cadena en un arreglo de cadenas utilizando la coma como separador
+                        String[] numeros = concatenacion.split(",");
+
+// Creamos un HashSet para almacenar los números únicos
+                        Set<String> numerosUnicos = new HashSet<>();
+
+// Recorremos el arreglo de números
+                        for (String numero : numeros) {
+                            // Agregamos cada número al HashSet
+                            numerosUnicos.add(numero);
+                        }
+
+// Convertimos el HashSet de números únicos a una cadena separada por comas
+                        String cadenaSinDuplicados = String.join(",", numerosUnicos);
+
+// Imprimimos la cadena sin números duplicados
+                        //System.out.println(cadenaSinDuplicados);
+
+                        hashAux.compute(i, (key, val) -> cadenaSinDuplicados);
+                        hashAux.compute(j, (key, val) -> "");
+
+                    } else {
+                    }
+                }
+            }
+        }
+
+        for (String i : hashAux.keySet()) { //buscar en hashEstados
+            //System.out.println(i + "-> " + hashAux.get(i));
+            boolean flag = false;
+            if (hashAux.get(i).equals("")) {
+
+            } else {
+
+                String[] x = hashAux.get(i).split(",");
+                Arrays.sort(x);
+                String sigposOrdenado = "";
+                for (String y : x) {
+                    sigposOrdenado = sigposOrdenado + y + ",";
+                }
+                hashAux.replace(i, sigposOrdenado); //ordena las sigpos para buscar
+
+                for (String j : hashEstados.keySet()) {//recorre hashEstados
+                    if (hashAux.get(i).equals(j)) { //sigpos == sigpos, ya existe S
+                        flag = true;
+                    }
+                }
+                if (flag == true) {
+                    // System.out.println("USAR ESTADO EXISTENTE S"+hashEstados.get(hashAux.get(i)));
+                    System.out.println("S" + estadoEval + " " + arrayId.get(Integer.parseInt(i) - 1) + "->" + hashAux.get(i) + "=" + hashEstados.get(hashAux.get(i)));
+                    ls.insertar("S"+estadoEval, arrayId.get(Integer.parseInt(i) - 1), hashAux.get(i), "S"+hashEstados.get(hashAux.get(i)));
+                } else {
+                    //System.out.println("CREAR ESTADO S"+numEstado+"->"+sigposOrdenado);
+                    System.out.println(estadoEval + " " + arrayId.get(Integer.parseInt(i) - 1) + "->" + hashAux.get(i) + "=" + "S" + numEstado);
+                    ls.insertar("S"+estadoEval, arrayId.get(Integer.parseInt(i) - 1), hashAux.get(i), "S" + numEstado);
+                    hashEstados.put(hashAux.get(i), numEstado + "");
+                    numEstado++;
+                    sigposEvaluar.add(hashAux.get(i));
+                }
+            }
+
+        }
+        // System.out.println(hashEstados);
+        //System.out.println(sigposEvaluar);
+        if (!sigposEvaluar.isEmpty()) {
+            // obtenemos el indice del ultimo elemento
+            int lastIndex = sigposEvaluar.size() - 1;
+
+            // obtenemos y eliminamos el ultimo elemento del ArrayList
+            String ultimoElemento = sigposEvaluar.remove(lastIndex);
+
+            // imprimimos el ultimo elemento
+            //System.out.println("El ultimo elemento es: " + ultimoElemento +"S"+hashEstados.get(ultimoElemento));
+            transiciones(ultimoElemento, Integer.parseInt(hashEstados.get(ultimoElemento)),nombre);
+        } else {
+            System.out.println("El ArrayList esta vacio.");
+            System.out.println(hashEstados);
+            arrayId.clear();
+            sigposEvaluar.clear();
+            hashEstados.clear();
+            hashAux.clear();
+            numEstado=0;
+            tablaSiguientes.clear();
+            numNodo=1;
+            numHoja=1;
+            ls.transicionesDot(nombre);
+            ls.eliminar();
+        }
+
+    }
+    //HASH TABLE SIGIENTES------------------------------------------------------
+    public static HashMap<String, String> tablaSiguientes = new HashMap<String, String>();
+
+    //METODO DEL ARBOL----------------------------------------------------------
+    public static int numNodo = 1; //para gtraficar
+    public static int numHoja = 1; //para identif. hojas 
+    public static Nodo raiz;
+
+    public static void graficarSiguientes(String nombre) {
+        FileWriter fichero = null;
+        PrintWriter pw = null;
+        try {
+            fichero = new FileWriter(nombre + "_siguientes.dot");
+            pw = new PrintWriter(fichero);
+            String texto = """
+                         digraph tabla {
+                             node [shape=plaintext]
+                             tabla [label=<<table border="1" cellspacing="0">
+                                 <tr><td bgcolor="#ADD8E6"><b> Sym </b></td><td bgcolor="#ADD8E6"><b> Hoja </b></td><td bgcolor="#ADD8E6"><b> Siguientes </b></td></tr>
+                                 
+                         """;
+            int contador = 0;
+            for (String i : tablaSiguientes.keySet()) {
+                texto += "<tr><td>" + arrayId.get(contador) + "</td><td>" + i + "</td><td>" + tablaSiguientes.get(i) + "</td></tr>";
+                contador++;
+            }
+            texto += "</table>>];}";
+            pw.println(texto);
+
+        } catch (Exception e) {
+            System.out.println("error, no se realizo el archivo" + e);
+        } finally {
+            try {
+                if (null != fichero) {
+                    fichero.close();
+                }
+            } catch (Exception e2) {
+                e2.printStackTrace();
+            }
+        }
+        //para compilar el archivo dot y obtener la imagen
+        try {
+            //dirección doonde se ecnuentra el compilador de graphviz
+            String dotPath = "C:\\Program Files\\Graphviz\\bin\\dot.exe";
+            //dirección del archivo dot
+            String fileInputPath = nombre + "_siguientes.dot";
+            //dirección donde se creara la magen
+            String fileOutputPath = "SIGUIENTES_202004796\\"+ nombre + "_siguientes.jpg";
+            //tipo de conversón
+            String tParam = "-Tjpg";
+            String tOParam = "-o";
+
+            String[] cmd = new String[5];
+            cmd[0] = dotPath;
+            cmd[1] = tParam;
+            cmd[2] = fileInputPath;
+            cmd[3] = tOParam;
+            cmd[4] = fileOutputPath;
+
+            Runtime rt = Runtime.getRuntime();
+
+            rt.exec(cmd);
+            System.out.println("######listo, Siguientes hecho###############");
+
+            hashEstados.put(raiz.primero, numEstado + "");
+            numEstado++;
+            transiciones(raiz.primero, 0,nombre);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public static void graficarArbol(Nodo act, String nombre) {
+
+        FileWriter fichero = null;
+        PrintWriter pw = null;
+        try {
+            fichero = new FileWriter(nombre + ".dot");
+            pw = new PrintWriter(fichero);
+            pw.println("digraph G{");
+            pw.println("rankdir=UD");
+            pw.println("node[shape=ellipse]");
+            pw.println("concentrate=true");
+            pw.println(act.getCodigoInterno());
+
+            pw.println("}");
+        } catch (Exception e) {
+            System.out.println("error, no se realizo el archivo" + e);
+        } finally {
+            try {
+                if (null != fichero) {
+                    fichero.close();
+                }
+            } catch (Exception e2) {
+                e2.printStackTrace();
+            }
+        }
+        //para compilar el archivo dot y obtener la imagen
+        try {
+            //dirección doonde se ecnuentra el compilador de graphviz
+            String dotPath = "C:\\Program Files\\Graphviz\\bin\\dot.exe";
+            //dirección del archivo dot
+            String fileInputPath = nombre + ".dot";
+            //dirección donde se creara la magen
+            String fileOutputPath = "ARBOLES_202004796\\"+ nombre + ".jpg";
+            //tipo de conversón
+            String tParam = "-Tjpg";
+            String tOParam = "-o";
+
+            String[] cmd = new String[5];
+            cmd[0] = dotPath;
+            cmd[1] = tParam;
+            cmd[2] = fileInputPath;
+            cmd[3] = tOParam;
+            cmd[4] = fileOutputPath;
+
+            Runtime rt = Runtime.getRuntime();
+
+            rt.exec(cmd);
+            System.out.println("######listo, arbol hecho###############");
+
+            numNodo = 1;
+            numHoja = 1;
+            graficarSiguientes(nombre);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        } finally {
+        }
+    }
+
+    
+:} 
+
+terminal String llaveAbrir, llaveCerrar, dosPuntos, porcentaje, pComa, punto, or, asterisco, suma,
+interrogacion, conj, nombreConj, flecha, notacion, tld, erComillas, erLlaves, simboloEspecial, lexemaEntrada, comentario, comentarioMult;
+
+non terminal INI, CONTENIDO, SENTENCIAS, CONJUNTOS, COMENTARIOS, DELIMITADORES, ENTRADA;
+non terminal Nodo ER, NOTACIONER;
+
+start with INI; 
+
+INI::=CONTENIDO{:System.out.println("listo");:};
+
+CONTENIDO::= llaveAbrir SENTENCIAS llaveCerrar;
+
+SENTENCIAS::=   SENTENCIAS CONJUNTOS 
+                |SENTENCIAS comentario
+                |SENTENCIAS comentarioMult
+                |SENTENCIAS ER
+                |SENTENCIAS DELIMITADORES
+                |SENTENCIAS ENTRADA
+                |SENTENCIAS error
+                |CONJUNTOS
+                |COMENTARIOS
+                |DELIMITADORES
+                |ENTRADA
+                |comentario
+                |comentarioMult;
+
+CONJUNTOS::=    conj dosPuntos tld flecha notacion pComa;
+
+ER::=           tld:b flecha NOTACIONER:a pComa{:
+                    //CENTINELA 
+                    boolean anulable;
+                    String primeros;
+                    String ultimos;
+                    anulable=false;
+                    primeros= parser.numHoja+",";
+                    ultimos= parser.numHoja+",";
+                    Nodo Centinela= new Nodo(null,null,"#",parser.numNodo,parser.numHoja,anulable,primeros,ultimos);
+                    parser.numNodo++;
+
+                    //AGREGAR CENTINELA
+                    anulable=false;
+                    if(a.isAnulable()==true){
+                        primeros=a.getPrimero()+parser.numHoja;
+                    }else{
+                        primeros=a.getPrimero();
+                    }
+                    ultimos=parser.numHoja+"";
+                    Nodo concatInicio = new Nodo(a,Centinela,".",parser.numNodo,0,anulable,primeros,ultimos);
+                    
+
+                    String[] val =a.getUltimo().split(",");
+                    for (String x : val)
+                        if(tablaSiguientes.containsKey(x)==true){
+                            tablaSiguientes.computeIfPresent(x, (key1, val1) -> val1 + parser.numHoja+",");
+                        }else{
+                            tablaSiguientes.put(x,parser.numHoja+",");
+                        }
+
+                    tablaSiguientes.put(numHoja+"","");
+                    parser.raiz=concatInicio;
+                    arrayId.add("#");
+                    graficarArbol(concatInicio,b);
+                    
+                  System.out.println("-------------------------------------------entra");
+System.out.println(tablaSiguientes);
+                :};
+
+NOTACIONER::=   punto NOTACIONER:a NOTACIONER:b{:
+                    boolean anulable;
+                    String primeros;
+                    String ultimos;
+                    if(a.isAnulable()==true && b.isAnulable()==true){
+                        anulable=true;
+                    }else{
+                        anulable=false;
+                    }
+                    if(a.isAnulable()==true){
+                        primeros=a.getPrimero()+b.getPrimero();
+                    }else{
+                        primeros=a.getPrimero();
+                    }
+                    if(b.isAnulable()==true){
+                        ultimos=a.getUltimo()+b.getUltimo();
+                    }else{
+                        ultimos=b.getUltimo();
+                    }
+                    Nodo nuevaConcat = new Nodo(a,b,".",parser.numNodo,0,anulable,primeros,ultimos);
+                    parser.numNodo++;
+                    RESULT = nuevaConcat;
+                    
+                    String[] val =a.getUltimo().split(",");
+                    for (String x : val)
+                        if(tablaSiguientes.containsKey(x)==true){
+                            tablaSiguientes.computeIfPresent(x, (key1, val1) -> val1 + b.getPrimero());
+                        }else{
+                            tablaSiguientes.put(x,b.getPrimero());
+                        }
+                        
+                    
+                :}
+
+                |or NOTACIONER:a NOTACIONER:b{:
+                    boolean anulable;
+                    String primeros;
+                    String ultimos;
+                    if(a.isAnulable()==true || b.isAnulable()==true){
+                        anulable=true;
+                    }else{
+                        anulable=false;
+                    }
+                    primeros= a.getPrimero()+b.getPrimero();
+                    ultimos= a.getUltimo()+b.getUltimo();
+                    Nodo nuevaDisyun = new Nodo(a,b,"|",parser.numNodo,0,anulable,primeros,ultimos);
+                    parser.numNodo++;
+                    RESULT = nuevaDisyun;
+                :}
+
+                |asterisco NOTACIONER:a{:
+                    boolean anulable;
+                    String primeros;
+                    String ultimos;
+                    anulable=true;
+                    primeros= a.getPrimero();
+                    ultimos= a.getUltimo();
+                    Nodo nuevaAsterisco= new Nodo(a,null,"*",parser.numNodo,0,anulable,primeros,ultimos);
+                    parser.numNodo++;
+                    RESULT = nuevaAsterisco;
+
+                    String[] val =a.getUltimo().split(",");
+                    for (String x : val)
+                        if(tablaSiguientes.containsKey(x)==true){
+                            tablaSiguientes.computeIfPresent(x, (key1, val1) -> val1 + a.getPrimero());
+                        }else{
+                            tablaSiguientes.put(x,a.getPrimero());
+                        }
+                :}
+
+                |suma NOTACIONER:a{:
+                    boolean anulable;
+                    String primeros;
+                    String ultimos;
+                    if(a.isAnulable()==true){
+                        anulable=true;
+                    }else{
+                        anulable=false;
+                    }
+                    primeros= a.getPrimero();
+                    ultimos= a.getUltimo();
+                    Nodo nuevaSuma= new Nodo(a,null,"+",parser.numNodo,0,anulable,primeros,ultimos);
+                    parser.numNodo++;
+                    RESULT = nuevaSuma;
+
+                    String[] val =a.getUltimo().split(",");
+                    for (String x : val)
+                        if(tablaSiguientes.containsKey(x)==true){
+                            tablaSiguientes.computeIfPresent(x, (key1, val1) -> val1 + a.getPrimero());
+                        }else{
+                            tablaSiguientes.put(x,a.getPrimero());
+                        }
+                :}
+
+                |interrogacion NOTACIONER:a{:
+                    boolean anulable;
+                    String primeros;
+                    String ultimos;
+                    anulable=true;
+                    primeros= a.getPrimero();
+                    ultimos= a.getUltimo();
+                    Nodo nuevaInterrogacion= new Nodo(a,null,"?",parser.numNodo,0,anulable,primeros,ultimos);
+                    parser.numNodo++;
+                    RESULT = nuevaInterrogacion;
+                :}
+
+                |erComillas:a{:
+                    boolean anulable;
+                    String primeros;
+                    String ultimos;
+                    anulable=false;
+                    primeros= parser.numHoja+",";
+                    ultimos= parser.numHoja+",";
+                    Nodo nuevaHoja= new Nodo(null,null,a.replace("\"", ""),parser.numNodo,parser.numHoja,anulable,primeros,ultimos);
+                    parser.numNodo++;
+                    parser.numHoja++;
+                    RESULT = nuevaHoja;
+                    
+                    arrayId.add(a.replace("\"", ""));
+                :}
+                |erLlaves:a{:
+                    boolean anulable;
+                    String primeros;
+                    String ultimos;
+                    anulable=false;
+                    primeros= parser.numHoja+",";
+                    ultimos= parser.numHoja+",";
+                    Nodo nuevaHoja1= new Nodo(null,null,a,parser.numNodo,parser.numHoja,anulable,primeros,ultimos);
+                    parser.numNodo++;
+                    parser.numHoja++;
+                    RESULT = nuevaHoja1;
+                    
+                    arrayId.add(a);
+                :}
+                |simboloEspecial:a{:
+                    boolean anulable;
+                    String primeros;
+                    String ultimos;
+                    anulable=false;
+                    primeros= parser.numHoja+",";
+                    ultimos= parser.numHoja+",";
+                    Nodo nuevaHoja2= new Nodo(null,null,a,parser.numNodo,parser.numHoja,anulable,primeros,ultimos);
+                    parser.numNodo++;
+                    parser.numHoja++;
+                    RESULT = nuevaHoja2;
+
+                    arrayId.add(a);
+                :};
+
+DELIMITADORES::= porcentaje porcentaje;
+
+ENTRADA::=      tld dosPuntos lexemaEntrada pComa;
